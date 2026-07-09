@@ -16,12 +16,29 @@ Redpanda bus, and optional Prometheus/Grafana — wired together and configured 
                       │     ├─▶ trusted_indexers ─▶ network subgraph │  (indexer discovery)
                       │     └─▶ selected indexers ─▶ query results    │
                       │                                              │
-                      │  redpanda  ◀─ query receipts                 │
+                      │  redpanda  ◀─ query fee records (metering)   │
                       │     │                                        │
                       │  escrow-manager ─▶ PaymentsEscrow (on-chain) │  (auto top-up)
                       │  tap-aggregator ─▶ RAVs for indexers (public)│
                       └─────────────────────────────────────────────┘
 ```
+
+## Requirements
+
+Light. Measured on Arbitrum One with the full network topology resident (~16k
+subgraphs, ~26k deployments, ~12.5k indexings):
+
+| Component            | Resident memory |
+| -------------------- | --------------- |
+| gateway (VmRSS)      | **~207 MB**     |
+| redpanda             | ~330 MB         |
+| tap-aggregator       | ~10 MB          |
+| **full stack**       | **~570 MB**     |
+
+**A 2 GB / 1 vCPU box runs it comfortably.** The gateway holds the network
+topology in memory, but that cost is ~200 MB in practice — not the multi-GB you
+might expect. (These are measurements, not estimates; supersedes any earlier
+2–4 GB guidance.) Disk: a few GB for images + Redpanda retention.
 
 ## Quickstart
 
@@ -45,7 +62,40 @@ Ships **payment-safe by default**: `PAYMENT_REQUIRED=false` and `ESCROW_DRY_RUN=
 you can validate query routing before a single wei moves. Flip both when you're ready — see
 [Stage 2](docs/02-onchain-escrow.md).
 
-### Smoke test
+### Smoke test — `gib smoke`
+
+The self-test every operator should run **before asking any indexer to whitelist them**. One
+command against a running deployment, nothing on-chain, keys unfunded:
+
+```sh
+docker compose --profile smoke run --rm smoke
+```
+
+It self-configures from your rendered `runtime/gateway.json` and prints a pass/fail table
+(nonzero exit on any failure):
+
+| # | Check | What it proves |
+|---|-------|----------------|
+| a | topology sync | the network subgraph loaded; indexer/subgraph counts within sane bounds |
+| b | query dispatched | a real query selected candidate indexers and attached receipts (a `gateway_queries` record appears) |
+| c | **runtime signer** | that record's `receipt_signer` equals your configured signer — the *running* gateway is signing with the right key |
+| d | mint → aggregate → verify | receipts minted through the gateway's identical signing path aggregate into a RAV whose signature recovers to your signer, with the right EIP-712 domain and `valueAggregate == Σ receipts` |
+| e | RAV field assertions | `payer == your sender`, `dataService == your SubgraphService` — config drift fails loudly |
+| f | negative tests | a tampered receipt and a wrong-key receipt are both **rejected** by the aggregator |
+
+**Why this isn't circular.** Checks (d–f) mint their own receipts, which alone would only prove
+the aggregator works. Check (c) independently confirms the *running* gateway signs with the same
+key — observed from a real dispatched query, not minted. Together they cover each other's gap:
+(c) proves the live signer, (d–f) prove those signatures aggregate and verify. This mirrors the
+original two-stage proof (real indexers recovering the signer from a live query + a verified RAV),
+folded into one repeatable command.
+
+**Boundary:** it stops at a verified *signed* RAV. On-chain RAV redemption is the collector
+contract's job, not gib's — deliberately untouched.
+
+Prefer a one-liner? A raw client query still works and returns a block number when funded (or a
+`402`/`bad indexers` when escrow is empty — which itself proves receipts were signed and
+dispatched):
 
 ```sh
 curl "http://localhost:7700/api/subgraphs/id/<SUBGRAPH_ID>" \
@@ -53,9 +103,6 @@ curl "http://localhost:7700/api/subgraphs/id/<SUBGRAPH_ID>" \
   -H "Authorization: Bearer <one-of-your-GATEWAY_API_KEYS>" \
   -d '{"query":"{ _meta { block { number } } }"}'
 ```
-
-A block number back = the box discovered indexers, selected up to three, signed receipts and
-returned an answer. 🎉
 
 ## What's in the box
 

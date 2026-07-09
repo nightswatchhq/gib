@@ -72,5 +72,18 @@ gateway (signer) signs a TAP v2 receipt per indexer request
   → escrow-manager watches the drawdown and tops escrow back up
 ```
 
+> **What's actually on the `gateway_queries` Kafka topic.** Not the signed receipts.
+> Each record is a `ClientQueryProtobuf` — `{ receipt_signer, indexer_queries[] }`,
+> where each indexer entry is `{ indexer, fee_grt }`. The gateway extracts the fee
+> from each signed receipt and **discards the receipt**; the signed receipts exist
+> only in-flight, in the `tap-receipt` header sent to the indexer. This is enough for
+> billing/metering — the fee amount and the signer (key attribution) are both present,
+> which is all the escrow-manager needs to size debt. But any future component that
+> needs the *receipts themselves* (e.g. to aggregate them) must obtain them another way
+> (mint via the gateway's signer, or capture the header) — they are not in Kafka. The
+> `gib smoke` self-test relies on exactly this: it mints receipts through the gateway's
+> identical signing path, and separately asserts a live `gateway_queries` record whose
+> `receipt_signer` equals the configured signer (the runtime-signer check).
+
 You (the operator) don't redeem RAVs — indexers do. Your job is keeping escrow funded and
 the aggregator healthy. See [03 — Operations](03-operations.md).

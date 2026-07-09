@@ -122,6 +122,100 @@ curl "http://localhost:7700/api/subgraphs/id/<SUBGRAPH_ID>" \
   rate / latency / freshness / economic security) in `.env`. Dial latency-vs-stake to your
   taste; defaults reproduce stock gateway behaviour exactly.
 
+## Getting indexers to accept your gateway
+
+A fresh gib deployment signs valid receipts that **every indexer rejects with a `402`**. This is
+protocol design, not a gib defect — and it's the one part of running a gateway you cannot do
+alone. Here is exactly what's happening and what to do about it.
+
+### Why paid queries 402 on a fresh deployment
+
+Indexers only serve paid queries from senders they have explicitly whitelisted. The whitelist is
+the indexer's `[tap.sender_aggregator_endpoints]` config — a map of `sender address → your
+aggregator URL`. It is simultaneously the **trust list** (which senders' receipts the indexer will
+accept) and the **aggregator address book** (where the indexer's `tap-agent` sends receipts to be
+turned into RAVs). A sender that isn't in the map is rejected, because an unredeemable receipt is a
+loss the indexer eats — so serving unknown senders is strictly downside for them.
+
+Concretely, this is the rejection our own deployment received from live Arbitrum indexers (signer
+`0x299A…12a3`):
+
+```
+402  {"message":"There was an error while accessing escrow account:
+             No sender found for signer 0x299A10779ECa64fEBba19839b1AA06c3509D12a3"}
+```
+
+The indexer recovered our signer from the receipt, looked it up, found no whitelist entry and no
+escrow, and declined. E&N's gateway does not hit this wall because **every indexer already carries
+E&N's sender** in their config out of the box. That pre-installed trust is the onboarding moat: it
+is protocol-level and social, not technical, and it is the same wall any independent gateway faces.
+gib does not remove it — nothing can, short of indexers adding you.
+
+### What you prove alone, before asking anyone for anything
+
+Everything up to the 402 is yours to demonstrate with **zero cooperation** — run
+[`gib smoke`](#smoke-test--gib-smoke) and it checks, end to end:
+
+- topology syncs; a real query selects candidate indexers and attaches receipts;
+- the **running** gateway signs with your configured signer (observed from its own Kafka record);
+- those receipts aggregate into a RAV that recovers to your signer, with the correct EIP-712 domain
+  and `valueAggregate == Σ receipts`, and correct `payer` / `dataService`;
+- tampered and wrong-key receipts are rejected by the aggregator.
+
+This is the credibility artifact you bring to indexers. The opening line of the ask is literally
+*"our sender passes the full `gib smoke` self-test — here's the output."* It says the only thing
+left is their whitelist entry and your funded escrow, not any doubt about your stack.
+
+### What requires indexer cooperation (exactly)
+
+**a. The indexer adds one line.** In their indexer config, under the TAP section, they map your
+sender address to your public aggregator URL:
+
+```toml
+[tap.sender_aggregator_endpoints]
+# <your SENDER_ADDRESS> = "<your public aggregator URL>"
+0x4a3156cEFBa872eb9711C5f37e52B5118323865C = "https://agg.your-gateway.example"
+```
+
+Their `tap-agent` reloads and will now accept your receipts and send them to your aggregator for
+RAVs. (Use a stable DNS name for the aggregator, not a bare IP — see
+[04 — Indexer onboarding](docs/04-indexer-onboarding.md).)
+
+**b. You fund escrow.** Your sender must be authorized on `GraphTallyCollector` and hold GRT
+deposited **per-indexer** in `PaymentsEscrow`, so the indexer's aggregated RAV is actually
+redeemable. The escrow-manager automates the authorize + top-up; the full procedure (and the
+`PAYMENT_REQUIRED` / `ESCROW_DRY_RUN` flip) is in [02 — On-chain escrow](docs/02-onchain-escrow.md).
+Not duplicated here.
+
+**c. If your signers diverge, set `GRAPH_TALLY_PUBLIC_KEYS`.** By default your aggregator only
+accepts receipts signed by its own wallet. If you rotate the signer or run more than one gateway
+signer, list every signer address in `GRAPH_TALLY_PUBLIC_KEYS` (see `.env.example`) or your own
+aggregator will reject those receipts.
+
+### A realistic onboarding sequence
+
+1. **Pick target subgraphs** — the deployments your users actually query.
+2. **Identify the indexers serving them with good QoS** — allocations, freshness, low latency (the
+   network subgraph and Graph Explorer show who serves what).
+3. **Make the ask** to each: your `gib smoke` output, the one `[tap.sender_aggregator_endpoints]`
+   line above (your sender = your aggregator URL), and confirmation you've funded per-indexer escrow.
+4. **Verify** with a paid query through your gateway to that subgraph — a `200` with data replaces
+   the `402`.
+5. **Expand** to more subgraphs and indexers.
+
+Honest threshold: the gateway selects **up to three** indexers per query, so **≥3 accepting
+indexers per target subgraph** is the practical point at which that subgraph serves reliably. One
+or two accepting indexers works but leaves no redundancy.
+
+### Boundary
+
+gib verifies the payment path **up to a signed, verified RAV** — signing, EIP-712 domain,
+gateway/aggregator signer consistency, and aggregation, all provable by you alone. What remains is
+**on-chain and cooperation-dependent**: the indexer's whitelist entry, escrow funding, and the
+indexer redeeming RAVs against your escrow on-chain. Nothing in this repo has moved funds or
+redeemed a RAV; no payment has flowed. Those steps are real, they are documented, and they are the
+work of onboarding — not of gib.
+
 ## Docs
 
 1. [Keys](docs/01-keys.md) — sender vs signer, generation, handling

@@ -1,0 +1,33 @@
+{
+  "api_keys": [ ${GATEWAY_API_KEYS_JSON} ],
+  "attestations": {
+    "chain_id": "${CHAIN_ID}",
+    "dispute_manager": "${DISPUTE_MANAGER}"
+  },
+  "exchange_rate_provider": ${GRT_USD},
+  "graph_env_id": "gib-${CHAIN_ID}",
+  "kafka": {
+    "bootstrap.servers": "redpanda:9092"
+  },
+  "log_json": false,
+  "min_graph_node_version": "${MIN_GRAPH_NODE_VERSION}",
+  "min_indexer_version": "${MIN_INDEXER_VERSION}",
+  "network_subgraph_max_lag_seconds": ${NETWORK_SUBGRAPH_MAX_LAG_SECONDS},
+  "payment_required": ${PAYMENT_REQUIRED},
+  "port_api": 7700,
+  "port_metrics": 7301,
+  "query_fees_target": ${QUERY_FEES_TARGET},
+  "receipts": {
+    "chain_id": "${CHAIN_ID}",
+    "payer": "${SENDER_ADDRESS}",
+    "signer": "${SIGNER_KEY}",
+    "verifier": "${GRAPH_TALLY_COLLECTOR}"
+  },
+  ${SELECTION_JSON}"subgraph_service": "${SUBGRAPH_SERVICE}",
+  "trusted_indexers": [
+    {
+      "url": "${NETWORK_SUBGRAPH_URL}",
+      "auth": "${NETWORK_SUBGRAPH_AUTH}"
+    }
+  ]
+}

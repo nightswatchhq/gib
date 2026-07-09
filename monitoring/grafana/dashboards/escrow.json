@@ -1,0 +1,65 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "schemaVersion": 39,
+  "title": "Gateway-in-a-Box — Escrow & Health",
+  "tags": ["gib", "escrow"],
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Escrow balance vs outstanding debt (GRT)",
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "none", "custom": { "fillOpacity": 10 } } },
+      "targets": [
+        { "expr": "escrow_total_balance_grt", "legendFormat": "balance", "refId": "A" },
+        { "expr": "escrow_total_debt_grt", "legendFormat": "debt", "refId": "B" }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Balance / debt coverage ratio",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0, "max": 5,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 1 },
+            { "color": "green", "value": 2 }
+          ] }
+        }
+      },
+      "targets": [
+        { "expr": "escrow_total_balance_grt / clamp_min(escrow_total_debt_grt, 1)", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Current escrow balance (GRT)",
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 9 },
+      "targets": [ { "expr": "escrow_total_balance_grt", "refId": "A" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Current outstanding debt (GRT)",
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 9 },
+      "targets": [ { "expr": "escrow_total_debt_grt", "refId": "A" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Service up",
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ]
+        }
+      },
+      "targets": [ { "expr": "up{service=~\"gateway|escrow-manager\"}", "legendFormat": "{{service}}", "refId": "A" } ]
+    }
+  ]
+}

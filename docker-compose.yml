@@ -1,0 +1,116 @@
+# Gateway-in-a-Box (gib) — a self-hostable Graph Protocol subgraph gateway
+# for The Graph Horizon on Arbitrum One.
+#
+#   1. cp .env.example .env         # then fill the TODOs
+#   2. ./scripts/fetch-addresses.sh # auto-fill verified Horizon contract addresses
+#   3. ./scripts/gen-keys.sh        # generate sender + signer keypairs (or bring your own)
+#   4. ./scripts/render.sh          # -> runtime/{gateway.json,escrow-manager.json,.env}
+#   5. docker compose --env-file runtime/.env up -d
+#
+# Services (core):
+#   redpanda       — Kafka-API bus; gateway exports query receipts, escrow-manager reads them
+#   tap-aggregator — PUBLIC endpoint indexers whitelist (aggregates receipts -> RAVs)
+#   escrow-manager — auto-authorizes signer + tops up PaymentsEscrow from observed query debt
+#   gateway        — routes queries to indexers, signs TAP v2 receipts
+#
+# Optional `monitoring` profile (docker compose --profile monitoring up -d):
+#   prometheus     — scrapes gateway + escrow-manager metrics
+#   grafana        — escrow balance/debt + query dashboards
+name: gib
+
+services:
+  redpanda:
+    container_name: gib-redpanda
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.5
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 1G
+      - --mode dev-container
+      - --default-log-level=info
+      - --kafka-addr=INTERNAL://0.0.0.0:9092
+      - --advertise-kafka-addr=INTERNAL://redpanda:9092
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      interval: 2s
+      retries: 60
+      test: rpk topic list --brokers=localhost:9092
+    restart: unless-stopped
+
+  tap-aggregator:
+    container_name: gib-tap-aggregator
+    image: ghcr.io/graphprotocol/graph_tally_aggregator:${AGGREGATOR_IMAGE_TAG:-v0.7.1}
+    environment:
+      GRAPH_TALLY_PORT: "7610"
+      GRAPH_TALLY_PRIVATE_KEY: ${SIGNER_KEY:?render.sh must inject SIGNER_KEY}
+      GRAPH_TALLY_DOMAIN_CHAIN_ID: ${CHAIN_ID}
+      GRAPH_TALLY_DOMAIN_VERIFYING_CONTRACT: ${GRAPH_TALLY_COLLECTOR}
+      RUST_LOG: ${RUST_LOG:-info},graph_tally_aggregator=debug
+    ports: ["${AGGREGATOR_PORT:-7610}:7610"]
+    restart: unless-stopped
+
+  escrow-manager:
+    container_name: gib-escrow-manager
+    image: ghcr.io/graphprotocol/graph_tally_escrow_manager:${ESCROW_IMAGE_TAG:-v2.0.0}
+    depends_on:
+      redpanda: { condition: service_healthy }
+    volumes:
+      - ./runtime/escrow-manager.json:/config/config.json:ro
+    command: ["/config/config.json"]
+    environment:
+      RUST_LOG: ${RUST_LOG:-info},graph_tally_escrow_manager=debug
+    ports: ["127.0.0.1:${ESCROW_METRICS_PORT:-9090}:9090"]
+    restart: unless-stopped
+
+  gateway:
+    container_name: gib-gateway
+    image: ghcr.io/lodestar-team/gateway:${GATEWAY_IMAGE_TAG:-latest}
+    depends_on:
+      redpanda: { condition: service_healthy }
+    volumes:
+      - ./runtime/gateway.json:/config/config.json:ro
+    command: ["/config/config.json"]
+    environment:
+      RUST_LOG: ${RUST_LOG:-info},gateway=debug
+      RUST_BACKTRACE: "1"
+    ports:
+      - "${GATEWAY_PORT:-7700}:7700"
+      - "127.0.0.1:${GATEWAY_METRICS_PORT:-7301}:7301"
+    healthcheck:
+      interval: 5s
+      retries: 30
+      test: curl -f http://127.0.0.1:7700/ || exit 1
+    restart: unless-stopped
+
+  # --- Optional monitoring profile ---------------------------------------
+  prometheus:
+    container_name: gib-prometheus
+    image: prom/prometheus:v2.54.1
+    profiles: ["monitoring"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9091}:9090"]
+    restart: unless-stopped
+
+  grafana:
+    container_name: gib-grafana
+    image: grafana/grafana:11.2.0
+    profiles: ["monitoring"]
+    depends_on: [prometheus]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+      - ./monitoring/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3000}:3000"]
+    restart: unless-stopped
+
+volumes:
+  redpanda-data:
+  prometheus-data:
+  grafana-data:

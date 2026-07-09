@@ -1,0 +1,22 @@
+{
+  "authorize_signers": true,
+  "dry_run": ${ESCROW_DRY_RUN},
+  "chain_id": ${CHAIN_ID},
+  "debts": {},
+  "graph_tally_collector_contract": "${GRAPH_TALLY_COLLECTOR}",
+  "payments_escrow_contract": "${PAYMENTS_ESCROW}",
+  "grt_allowance": ${GRT_ALLOWANCE},
+  "grt_contract": "${GRT}",
+  "kafka": {
+    "config": {
+      "bootstrap.servers": "redpanda:9092"
+    },
+    "realtime_topic": "gateway_queries"
+  },
+  "network_subgraph": "${NETWORK_SUBGRAPH_URL}",
+  "query_auth": "${NETWORK_SUBGRAPH_AUTH}",
+  "rpc_url": "${ARB_RPC}",
+  "signers": ["${SIGNER_KEY}"],
+  "secret_key": "${SENDER_KEY}",
+  "update_interval_seconds": 30
+}

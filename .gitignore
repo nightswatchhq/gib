@@ -1,0 +1,9 @@
+# Operator secrets & rendered runtime — NEVER commit these
+.env
+runtime/
+secrets/
+config/addresses.env
+
+# OS / editor
+.DS_Store
+*.swp

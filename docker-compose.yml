@@ -46,6 +46,10 @@ services:
       GRAPH_TALLY_PRIVATE_KEY: ${SIGNER_KEY:?render.sh must inject SIGNER_KEY}
       GRAPH_TALLY_DOMAIN_CHAIN_ID: ${CHAIN_ID}
       GRAPH_TALLY_DOMAIN_VERIFYING_CONTRACT: ${GRAPH_TALLY_COLLECTOR}
+      # Accepted receipt signers BEYOND the aggregator's own wallet. Uncomment and
+      # set GRAPH_TALLY_PUBLIC_KEYS (comma-separated addresses) in .env the moment
+      # you rotate/add a gateway signer, or aggregation silently rejects. See .env.example.
+      # GRAPH_TALLY_PUBLIC_KEYS: ${GRAPH_TALLY_PUBLIC_KEYS}
       RUST_LOG: ${RUST_LOG:-info},graph_tally_aggregator=debug
     ports: ["${AGGREGATOR_PORT:-7610}:7610"]
     restart: unless-stopped
@@ -82,6 +86,20 @@ services:
       retries: 30
       test: curl -f http://127.0.0.1:7700/ || exit 1
     restart: unless-stopped
+
+  # --- Self-test (profile "smoke") ---------------------------------------
+  # docker compose --profile smoke run --rm smoke
+  # Runs the full receipt->RAV self-test against the running stack. Reads the
+  # rendered gateway.json to self-configure; nothing on-chain.
+  smoke:
+    container_name: gib-smoke
+    build: ./smoke
+    image: gib-smoke:latest
+    profiles: ["smoke"]
+    depends_on: [gateway, tap-aggregator, redpanda]
+    volumes:
+      - ./runtime/gateway.json:/config/gateway.json:ro
+    restart: "no"
 
   # --- Optional monitoring profile ---------------------------------------
   prometheus:

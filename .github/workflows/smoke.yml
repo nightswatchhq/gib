@@ -1,0 +1,32 @@
+name: gib-smoke
+
+# Builds and unit-tests the gib-smoke self-test crate. The full end-to-end run
+# (checks a–f) needs a live gib deployment, so it is run by operators via
+# `docker compose --profile smoke run --rm smoke`; CI covers compile + the pure
+# logic (receipt signing/recovery, collection-id padding, domain matching,
+# ClientQueryProtobuf decode).
+
+on:
+  push:
+    paths: ["smoke/**", ".github/workflows/smoke.yml"]
+  pull_request:
+    paths: ["smoke/**", ".github/workflows/smoke.yml"]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: smoke
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: smoke
+      - name: Build
+        run: cargo build --locked --all-targets
+      - name: Test
+        run: cargo test --locked
+      - name: Docker image builds
+        run: docker build -t gib-smoke:ci .

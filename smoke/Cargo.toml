@@ -1,0 +1,30 @@
+[package]
+name = "gib-smoke"
+version = "0.1.0"
+edition = "2021"
+description = "gib self-test: the check every operator runs before asking an indexer to whitelist them. Composes the running-gateway signing path (Phase 1) with the receipt->RAV aggregation path (Phase 2). Nothing on-chain."
+
+[[bin]]
+name = "gib-smoke"
+path = "src/main.rs"
+
+[lib]
+name = "gib_smoke"
+path = "src/lib.rs"
+
+[dependencies]
+# Same TAP v2 crates the gateway signs with — guarantees byte-identical receipts.
+tap_graph = { version = "0.3", features = ["v2"] }
+tap_eip712_message = "0.2"
+thegraph-core = { version = "0.15", features = ["alloy-signer-local"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+prost = "0.13"
+base64 = "0.22"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

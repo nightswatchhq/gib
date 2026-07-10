@@ -67,11 +67,32 @@ services:
     ports: ["127.0.0.1:${ESCROW_METRICS_PORT:-9090}:9090"]
     restart: unless-stopped
 
+  # Network-subgraph topology source. The pragmatic default: fronts a READ-ONLY
+  # decentralised-gateway (Studio) key and re-wraps its response into the
+  # indexer-service envelope `trusted_indexers` expects. Set TOPOLOGY_STUDIO_KEY
+  # in .env. Sovereign alternatives (self-index / cooperating indexer) need no
+  # key and no adapter — see docs/06-topology.md, then point NETWORK_SUBGRAPH_URL
+  # at your source and drop this service + the gateway's depends_on below.
+  topology-adapter:
+    container_name: gib-topology-adapter
+    build: ./topology-adapter
+    image: gib-topology-adapter:latest
+    environment:
+      STUDIO_API_KEY: ${TOPOLOGY_STUDIO_KEY:-}
+      NETWORK_SUBGRAPH_ID: ${NETWORK_SUBGRAPH_ID:-DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:7601/health').status==200 else 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   gateway:
     container_name: gib-gateway
     image: ghcr.io/lodestar-team/gateway:${GATEWAY_IMAGE_TAG:-latest}
     depends_on:
       redpanda: { condition: service_healthy }
+      topology-adapter: { condition: service_healthy }
     volumes:
       - ./runtime/gateway.json:/config/config.json:ro
     command: ["/config/config.json"]

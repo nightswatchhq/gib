@@ -2,16 +2,11 @@
 
 ## Network subgraph: how the box discovers indexers
 
-The gateway needs the Graph Network (Arbitrum One) subgraph to discover indexers,
-allocations, escrow accounts and authorized signers (deployment
-`DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp`). Two ways to serve it:
-
-- **Trusted indexer (recommended for launch).** Point `NETWORK_SUBGRAPH_URL` at a keyed
-  public endpoint that serves this subgraph. Zero extra infra. This is what the rendered
-  `trusted_indexers` block uses.
-- **Self-index (more independence).** Run your own graph-node + IPFS + Postgres and index
-  the network subgraph locally, then point `NETWORK_SUBGRAPH_URL` at it. Heavier; out of
-  scope for the base box. The compose file leaves room to add these services later.
+The gateway discovers indexers, allocations, escrow accounts and authorized signers from the
+Graph Network (Arbitrum One) subgraph. Serving it is not as simple as pointing at a public URL
+— `trusted_indexers` needs the indexer-service envelope, and the subgraph itself is behind the
+same payment wall as every query. gib's default (the bundled topology-adapter + a read-only
+key) and the two sovereign alternatives are covered in **[06 — Topology source](06-topology.md)**.
 
 ## Monitoring
 

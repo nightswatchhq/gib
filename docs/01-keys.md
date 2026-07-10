@@ -20,7 +20,8 @@ the escrow-manager for on-chain transactions.
 SECRETS_DIR=/root/gib-secrets ./scripts/gen-keys.sh
 ```
 
-Requires [`cast`](https://getfoundry.sh) (Foundry). Each file gets an `Address:` and a
+Uses [`cast`](https://getfoundry.sh) (Foundry) if installed, otherwise the Foundry Docker image
+(no host install needed). Each file gets an `Address:` and a
 `Private key:` line. `render.sh` reads the `0x…` key from these; it never stores keys in
 `.env` or the compose env-file that lands in git.
 

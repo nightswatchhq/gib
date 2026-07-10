@@ -8,7 +8,8 @@ three-day setup ceremony. (What's proven vs. what you still have to do:
 Under the hood it's the [`lodestar-team/gateway`](https://github.com/lodestar-team/gateway)
 fork (MIT, TAP v2 / Horizon-native) plus the `graph-tally` aggregator and escrow-manager, a
 Redpanda bus, and optional Prometheus/Grafana — wired together and configured from a single
-`.env`. No Edge & Node Studio dependency: you run your own API keys.
+`.env`. Your consumer API keys are your own — no Studio account needed for your users. Topology
+bootstrap currently requires a read-only Studio key (see [Status & limitations](#status--limitations)).
 
 ```
                       ┌─────────────────────────────────────────────┐
@@ -43,9 +44,9 @@ might expect. (These are measurements, not estimates; supersedes any earlier
 
 ## Quickstart
 
-**Prerequisites:** Docker + compose, `gettext-base` (`envsubst`), `python3`, and
-[`cast`](https://getfoundry.sh) (Foundry, for key generation). A funded sender wallet is only
-needed for real payments ([Stage 2](docs/02-onchain-escrow.md)).
+**Prerequisites:** Docker + compose, `gettext-base` (`envsubst`), `python3`, and optionally
+[`cast`](https://getfoundry.sh) (Foundry) for key generation — or Docker will be used as a
+fallback. A funded sender wallet is only needed for real payments ([Stage 2](docs/02-onchain-escrow.md)).
 
 ```sh
 git clone https://github.com/lodestar-team/gib && cd gib

@@ -1,8 +1,9 @@
 # Gateway-in-a-Box (gib)
 
 A self-hostable **Graph Protocol subgraph gateway** for The Graph Horizon on Arbitrum One —
-in a Docker Compose box. Pour yourself a working, fund-handling gateway without a three-day
-setup ceremony.
+in a Docker Compose box. Stand up a working, TAP-native, Horizon-ready gateway without a
+three-day setup ceremony. (What's proven vs. what you still have to do:
+[Status & limitations](#status--limitations).)
 
 Under the hood it's the [`lodestar-team/gateway`](https://github.com/lodestar-team/gateway)
 fork (MIT, TAP v2 / Horizon-native) plus the `graph-tally` aggregator and escrow-manager, a
@@ -224,16 +225,41 @@ work of onboarding — not of gib.
 4. [Indexer onboarding](docs/04-indexer-onboarding.md) — the aggregator handshake
 5. [Upgrades & fork maintenance](docs/05-upgrade-rebase.md) — pinning, rebases
 
-## Status & caveats
+## Status & limitations
 
-- The gateway fork has booted end-to-end against **live Arbitrum One** (~15.8k subgraphs,
-  ~182 indexers, signed TAP v2 receipts). Real-payment flow is [Stage 2](docs/02-onchain-escrow.md).
-- **Kafka (Redpanda) is required**, not optional — the escrow-manager derives outstanding
-  debt from the gateway's exported topics.
-- The `tap-aggregator` **must** be internet-reachable by indexers; put TLS in front of it.
-- Contract addresses are **new Horizon deployments** — always let `fetch-addresses.sh` pull
-  them; never hand-copy.
-- Load-test resource sizing (gateway in-memory topology, Redpanda retention) before
-  production at Arbitrum One scale.
+**v0.2 — proven end-to-end for everything that needs no money and no third parties; plain about
+the rest.**
+
+**What's proven, and how.** [`gib smoke`](#smoke-test--gib-smoke) verifies the whole payment
+path a fresh deployment can prove alone: topology sync, the *running* gateway signing with the
+configured signer (read back from its own `gateway_queries` record), receipts aggregating into a
+signed RAV that recovers to that signer with the correct EIP-712 domain and `valueAggregate == Σ`,
+correct payer/dataService, and both negative tests. It has been run **green from a clean stranger
+deploy** — README only, images pulled from GHCR at a pinned tag. The published gateway image is
+verified as shipped, not a local build.
+
+**What has never been done — no hedging:**
+- **No payment has ever flowed.** Not on any network, not once.
+- **On-chain RAV redemption is untouched.** gib stops at a verified *signed* RAV; redeeming it
+  against escrow on-chain is the collector contract's job and has not been exercised.
+- **No paid query has ever returned data.** Against live indexers, unfunded receipts return
+  `402` by design — that 402 *is* the evidence the receipts are valid. A `200` with data needs
+  funded escrow **and** an indexer whitelist entry (below).
+- The **Stage-2 / escrow-manager** path (`--profile escrow`) is **unverified** — it needs a raw
+  network-subgraph source and real funds, neither tested.
+
+**What every operator must still do themselves:**
+- **Supply a topology source** — a read-only Studio key for the bundled adapter, or a sovereign
+  source ([06 — Topology](docs/06-topology.md)).
+- **Fund escrow** — authorize the signer + deposit GRT per indexer ([02 — On-chain escrow](docs/02-onchain-escrow.md)).
+- **Get indexers to whitelist your sender** — the protocol-level onboarding wall
+  ([Getting indexers to accept your gateway](#getting-indexers-to-accept-your-gateway)).
+
+**Measured footprint** (measurements, not estimates): gateway ~207 MB RSS with full Arbitrum
+topology resident, whole stack ~570 MB — runs on a 2 GB box. See [Requirements](#requirements).
+
+**Operational notes.** Redpanda is required (the fee-metering bus). The `tap-aggregator` must be
+internet-reachable by indexers — put TLS in front of it. Always let `fetch-addresses.sh` pull the
+Horizon contract addresses; never hand-copy.
 
 MIT licensed. A [Lodestar](https://github.com/lodestar-team) project.

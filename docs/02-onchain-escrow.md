@@ -18,12 +18,22 @@ Steps 2 and 4 are **automated by the escrow-manager** when `ESCROW_DRY_RUN=false
 `authorize_signers=true` (the default in the rendered config). It reads outstanding query
 debt from the `gateway_queries` Kafka topic and sizes deposits up to `GRT_ALLOWANCE`.
 
+> **The escrow-manager is opt-in (`--profile escrow`).** It is not part of the default stack —
+> a Stage-1 (no-payments) deployment doesn't need it. Bring it up only when funding escrow.
+>
+> **It needs a RAW network-subgraph endpoint, not the topology-adapter.** The adapter returns
+> the indexer-service envelope the *gateway* wants; the escrow-manager speaks plain GraphQL and
+> will fail (`fetch authorized signers: Empty response`) against the envelope. Point its
+> `network_subgraph` at a raw source — e.g. your keyed decentralised-gateway URL directly, or a
+> self-hosted graph-node query endpoint. This path is **untested in this release** (no payments
+> have ever flowed — see the README Status section); treat Stage B as unverified.
+
 ## Do it in two stages
 
 ### Stage A — dry run (default, no funds move)
 ```sh
 # .env: PAYMENT_REQUIRED=false, ESCROW_DRY_RUN=true
-./scripts/render.sh && docker compose --env-file runtime/.env up -d
+./scripts/render.sh && docker compose --env-file runtime/.env --profile escrow up -d escrow-manager
 docker compose --env-file runtime/.env logs -f escrow-manager
 ```
 You'll see the escrow-manager *log* the `authorizeSigner` and deposit txs it **would** send.
@@ -33,7 +43,7 @@ Confirm the amounts and the target contracts look right. Route a test query (see
 ### Stage B — real payments
 ```sh
 # .env: ESCROW_DRY_RUN=false   (keep PAYMENT_REQUIRED=false one more boot to watch it fund)
-./scripts/render.sh && docker compose --env-file runtime/.env up -d escrow-manager
+./scripts/render.sh && docker compose --env-file runtime/.env --profile escrow up -d escrow-manager
 docker compose --env-file runtime/.env logs -f escrow-manager   # watch authorizeSigner + deposit land
 ```
 Once you see escrow funded on-chain (and `escrow_total_balance_grt` climb in Grafana), set

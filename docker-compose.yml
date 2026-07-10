@@ -54,9 +54,15 @@ services:
     ports: ["${AGGREGATOR_PORT:-7610}:7610"]
     restart: unless-stopped
 
+  # Stage-2 only: authorizes the signer and tops up PaymentsEscrow. Opt-in via
+  # `--profile escrow` — it does nothing useful until you're funding escrow, and
+  # it needs a RAW network-subgraph endpoint (not the envelope the topology-adapter
+  # serves). See docs/02-onchain-escrow.md. Left out of the default stack so a
+  # Stage-1 (no-payments) deployment comes up clean.
   escrow-manager:
     container_name: gib-escrow-manager
     image: ghcr.io/graphprotocol/graph_tally_escrow_manager:${ESCROW_IMAGE_TAG:-v2.0.0}
+    profiles: ["escrow"]
     depends_on:
       redpanda: { condition: service_healthy }
     volumes:

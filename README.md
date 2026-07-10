@@ -49,7 +49,7 @@ needed for real payments ([Stage 2](docs/02-onchain-escrow.md)).
 ```sh
 git clone https://github.com/lodestar-team/gib && cd gib
 
-cp .env.example .env               # 1. fill the TODOs (SENDER_ADDRESS, NETWORK_SUBGRAPH_URL, GATEWAY_API_KEYS)
+cp .env.example .env               # 1. fill the TODOs (SENDER_ADDRESS, TOPOLOGY_STUDIO_KEY, GATEWAY_API_KEYS)
 ./scripts/fetch-addresses.sh       # 2. auto-fill verified Horizon addresses -> config/addresses.env
 ./scripts/gen-keys.sh              # 3. generate sender + signer keys -> ./secrets
 ./scripts/render.sh                # 4. render runtime/{gateway.json,escrow-manager.json,.env}

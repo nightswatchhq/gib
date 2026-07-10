@@ -7,15 +7,28 @@
 #   ./scripts/gen-keys.sh                 # -> ./secrets/{sender,signer}.txt
 #   SECRETS_DIR=/root/gib-secrets ./scripts/gen-keys.sh
 #
-# Requires `cast` (Foundry). Install: https://getfoundry.sh
+# Uses `cast` (Foundry) if installed, otherwise the Foundry Docker image — gib
+# already requires Docker, so no host Foundry install is needed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 SECRETS_DIR="${SECRETS_DIR:-./secrets}"
-command -v cast >/dev/null || { echo "ERROR: 'cast' (Foundry) required. https://getfoundry.sh" >&2; exit 1; }
+FOUNDRY_IMAGE="${FOUNDRY_IMAGE:-ghcr.io/foundry-rs/foundry:latest}"
 
 mkdir -p "$SECRETS_DIR"
 chmod 700 "$SECRETS_DIR"
+
+# Emit a fresh wallet as text (an "Address:" line and a "Private key:" line).
+new_wallet() {
+  if command -v cast >/dev/null; then
+    cast wallet new
+  elif command -v docker >/dev/null; then
+    docker run --rm "$FOUNDRY_IMAGE" 'cast wallet new'
+  else
+    echo "ERROR: need either 'cast' (https://getfoundry.sh) or Docker to generate keys." >&2
+    exit 1
+  fi
+}
 
 gen() { # name -> writes $SECRETS_DIR/$name.txt if absent
   local name="$1" file="$SECRETS_DIR/$1.txt"
@@ -23,8 +36,12 @@ gen() { # name -> writes $SECRETS_DIR/$name.txt if absent
     echo "  $name.txt exists — keeping it (delete to regenerate)."
     return
   fi
-  cast wallet new | sed -n '1,2p' > "$file"   # "Address:" + "Private key:" lines
+  local out; out="$(new_wallet)"
+  # Extract by field name (robust across cast versions), not by line number.
+  { echo "$out" | grep -iE '^Address'; echo "$out" | grep -iE 'Private key'; } > "$file"
   chmod 600 "$file"
+  grep -qiE 'Private key.*0x[0-9a-fA-F]{64}' "$file" \
+    || { echo "ERROR: failed to parse a private key into $file" >&2; exit 1; }
   echo "  wrote $file"
   grep -i 'Address' "$file"
 }

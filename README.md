@@ -5,7 +5,7 @@ in a Docker Compose box. Stand up a working, TAP-native, Horizon-ready gateway w
 three-day setup ceremony. (What's proven vs. what you still have to do:
 [Status & limitations](#status--limitations).)
 
-Under the hood it's the [`lodestar-team/gateway`](https://github.com/lodestar-team/gateway)
+Under the hood it's the [`nightswatchhq/gateway`](https://github.com/nightswatchhq/gateway)
 fork (MIT, TAP v2 / Horizon-native) plus the `graph-tally` aggregator and escrow-manager, a
 Redpanda bus, and optional Prometheus/Grafana — wired together and configured from a single
 `.env`. Your consumer API keys are your own — no Studio account needed for your users. Topology
@@ -49,7 +49,7 @@ might expect. (These are measurements, not estimates; supersedes any earlier
 fallback. A funded sender wallet is only needed for real payments ([Stage 2](docs/02-onchain-escrow.md)).
 
 ```sh
-git clone https://github.com/lodestar-team/gib && cd gib
+git clone https://github.com/nightswatchhq/gib && cd gib
 
 cp .env.example .env               # 1. fill the TODOs (SENDER_ADDRESS, TOPOLOGY_STUDIO_KEY, GATEWAY_API_KEYS)
 ./scripts/fetch-addresses.sh       # 2. auto-fill verified Horizon addresses -> config/addresses.env
@@ -110,7 +110,7 @@ curl "http://localhost:7700/api/subgraphs/id/<SUBGRAPH_ID>" \
 
 | Service | Image | Role |
 |---------|-------|------|
-| `gateway` | `ghcr.io/lodestar-team/gateway` | routes queries, signs TAP v2 receipts |
+| `gateway` | `ghcr.io/nightswatchhq/gateway` | routes queries, signs TAP v2 receipts |
 | `tap-aggregator` | `ghcr.io/graphprotocol/graph_tally_aggregator` | **public** — aggregates receipts → RAVs for indexers |
 | `escrow-manager` | `ghcr.io/graphprotocol/graph_tally_escrow_manager` | auto-authorizes signer, tops up escrow |
 | `redpanda` | `redpandadata/redpanda` | Kafka-API bus for receipts/attestations |
@@ -263,4 +263,4 @@ topology resident, whole stack ~570 MB — runs on a 2 GB box. See [Requirements
 internet-reachable by indexers — put TLS in front of it. Always let `fetch-addresses.sh` pull the
 Horizon contract addresses; never hand-copy.
 
-MIT licensed. A [Lodestar](https://github.com/lodestar-team) project.
+MIT licensed. A [Lodestar](https://github.com/nightswatchhq) project.

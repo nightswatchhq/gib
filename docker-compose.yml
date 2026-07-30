@@ -95,7 +95,7 @@ services:
 
   gateway:
     container_name: gib-gateway
-    image: ghcr.io/lodestar-team/gateway:${GATEWAY_IMAGE_TAG:-latest}
+    image: ghcr.io/nightswatchhq/gateway:${GATEWAY_IMAGE_TAG:-latest}
     depends_on:
       redpanda: { condition: service_healthy }
       topology-adapter: { condition: service_healthy }

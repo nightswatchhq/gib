@@ -8,7 +8,7 @@ they're built from.
 Pin versions in `.env` and bump deliberately:
 
 ```sh
-GATEWAY_IMAGE_TAG=v27.6.0    # ghcr.io/lodestar-team/gateway
+GATEWAY_IMAGE_TAG=v27.6.0    # ghcr.io/nightswatchhq/gateway
 AGGREGATOR_IMAGE_TAG=v0.7.1  # ghcr.io/graphprotocol/graph_tally_aggregator
 ESCROW_IMAGE_TAG=v2.0.0      # ghcr.io/graphprotocol/graph_tally_escrow_manager
 ```
@@ -24,7 +24,7 @@ branch and can move under you.
 
 ## Maintaining the gateway fork (maintainer)
 
-The gateway image is built from `lodestar-team/gateway`, a fork of `edgeandnode/gateway`.
+The gateway image is built from `nightswatchhq/gateway`, a fork of `edgeandnode/gateway`.
 Keep the fork close to upstream by rebasing, carrying the box's patches as a small, isolated
 commit series so merges stay cheap:
 
@@ -32,12 +32,12 @@ commit series so merges stay cheap:
 2. **`Fixed` API-key / Studio-stub defaults** — the box uses the built-in static API-key mode
    instead of Edge & Node's Studio key service.
 3. **Selection weights** — the optional `selection` config block (depends on the
-   `lodestar-team/candidate-selection` fork; keep that fork's rev pinned in `Cargo.toml`).
+   `nightswatchhq/candidate-selection` fork; keep that fork's rev pinned in `Cargo.toml`).
 4. **Address-book auto-fill** — lives in gib, not the fork, so it doesn't touch rebases.
 
 Cadence: track upstream releases (fork was cut at `v27.6.0`; upstream moves through
 `v27.7.x`). For each upstream tag: rebase the patch series, run `cargo test`, cut a
-`lodestar-team/gateway` tag → the GHCR workflow publishes the multi-arch image → bump
+`nightswatchhq/gateway` tag → the GHCR workflow publishes the multi-arch image → bump
 `GATEWAY_IMAGE_TAG` in the box.
 
 ## When to re-baseline (decision triggers)

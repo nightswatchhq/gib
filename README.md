@@ -225,6 +225,10 @@ work of onboarding — not of gib.
 3. [Operations](docs/03-operations.md) — monitoring, indexer selection, network subgraph
 4. [Indexer onboarding](docs/04-indexer-onboarding.md) — the aggregator handshake
 5. [Upgrades & fork maintenance](docs/05-upgrade-rebase.md) — pinning, rebases
+6. [Topology source](docs/06-topology.md) — the network subgraph, and why it isn't free
+7. [Your own QoS subgraph](docs/07-qos-subgraph.md) — deploying a QoS oracle subgraph
+8. [Publishing your own QoS feed](docs/08-qos-publishing.md) — the wire format, and what a
+   second gateway would have to build
 
 ## Status & limitations
 
@@ -248,6 +252,10 @@ verified as shipped, not a local build.
   funded escrow **and** an indexer whitelist entry (below).
 - The **Stage-2 / escrow-manager** path (`--profile escrow`) is **unverified** — it needs a raw
   network-subgraph source and real funds, neither tested.
+- **No QoS data has ever been published.** [08 — Publishing your own QoS feed](docs/08-qos-publishing.md)
+  is a wire-format specification read off live payloads and the public consumer, not a runbook:
+  gib ships no publisher and none has been run. The *consumer* side
+  ([07](docs/07-qos-subgraph.md)) is a build we have actually run.
 
 **What every operator must still do themselves:**
 - **Supply a topology source** — a read-only Studio key for the bundled adapter, or a sovereign

@@ -28,7 +28,7 @@ sources = ["scripts/*.sh"]
 desc = "Build the smoke-test binary"
 run = ["cargo build --release"]
 cwd = "smoke"
-sources = ["smoke/src/**/*.rs", "smoke/Cargo.toml", "smoke/Cargo.lock"]
+sources = ["src/**/*.rs", "Cargo.toml", "Cargo.lock"]
 
 [tasks.smoke]
 desc = "Run the smoke test against a running stack"

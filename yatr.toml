@@ -1,0 +1,58 @@
+# yatr - https://github.com/cargopete/yatr
+#
+# Task names are the same across every nightswatchhq repo, so `yatr ci` means
+# the same thing wherever you are. Note that `ci` is deliberately not called
+# `check`: `yatr check` is a builtin that validates this file, and it shadows
+# any task of that name without warning.
+
+# Gateway-in-a-Box is a Compose deployment, not a build. The useful tasks are
+# the ones that catch a broken stack before it is shipped to someone.
+
+[settings]
+cache = true
+
+# Not cached: yatr's source hashing walks the tree with hidden entries
+# skipped, so a `sources` glob under a dot-directory matches nothing and the
+# task neither invalidates nor keys uniquely. See cargopete/yatr.
+[tasks.config]
+desc = "Fail if docker-compose.yml does not parse and resolve"
+run = ["docker compose config --quiet"]
+no_cache = true
+
+[tasks.shellcheck]
+desc = "Lint the operator scripts"
+run = ["shellcheck scripts/fetch-addresses.sh scripts/gen-keys.sh scripts/render.sh"]
+sources = ["scripts/*.sh"]
+
+[tasks.smoke-build]
+desc = "Build the smoke-test binary"
+run = ["cargo build --release"]
+cwd = "smoke"
+sources = ["smoke/src/**/*.rs", "smoke/Cargo.toml", "smoke/Cargo.lock"]
+
+[tasks.smoke]
+desc = "Run the smoke test against a running stack"
+run = ["cargo run --release"]
+cwd = "smoke"
+depends = ["smoke-build"]
+no_cache = true
+
+[tasks.adapter]
+desc = "Syntax-check the topology adapter"
+run = ["python3 -m py_compile topology-adapter/adapter.py"]
+sources = ["topology-adapter/adapter.py"]
+
+[tasks.up]
+desc = "Bring the stack up"
+run = ["docker compose up -d"]
+no_cache = true
+
+[tasks.down]
+desc = "Tear the stack down"
+run = ["docker compose down"]
+no_cache = true
+
+[tasks.ci]
+desc = "What can be checked without a running stack: config, shellcheck, adapter, smoke-build"
+depends = ["config", "shellcheck", "adapter", "smoke-build"]
+run = []

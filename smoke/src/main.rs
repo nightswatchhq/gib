@@ -29,20 +29,48 @@ use thegraph_core::alloy::{primitives::Address, signers::local::PrivateKeySigner
 #[command(about = "gib smoke: end-to-end payment-path self-test for a running gib deployment")]
 struct Args {
     /// Rendered gateway config to self-configure from.
-    #[arg(long, env = "GIB_GATEWAY_CONFIG", default_value = "/config/gateway.json")]
+    #[arg(
+        long,
+        env = "GIB_GATEWAY_CONFIG",
+        default_value = "/config/gateway.json"
+    )]
     config: String,
-    #[arg(long, env = "GIB_GATEWAY_URL", default_value = "http://gib-gateway:7700")]
+    #[arg(
+        long,
+        env = "GIB_GATEWAY_URL",
+        default_value = "http://gib-gateway:7700"
+    )]
     gateway_url: String,
-    #[arg(long, env = "GIB_AGGREGATOR_URL", default_value = "http://gib-tap-aggregator:7610")]
+    #[arg(
+        long,
+        env = "GIB_AGGREGATOR_URL",
+        default_value = "http://gib-tap-aggregator:7610"
+    )]
     aggregator_url: String,
-    #[arg(long, env = "GIB_PANDAPROXY_URL", default_value = "http://gib-redpanda:8082")]
+    #[arg(
+        long,
+        env = "GIB_PANDAPROXY_URL",
+        default_value = "http://gib-redpanda:8082"
+    )]
     pandaproxy_url: String,
     /// A well-indexed subgraph id to probe (default: Uniswap V3 Arbitrum).
-    #[arg(long, env = "GIB_TEST_SUBGRAPH", default_value = "FQ6JYszEKApsBpAmiHesRsd9Ygc6mzmpNRANeVQFYoVX")]
+    #[arg(
+        long,
+        env = "GIB_TEST_SUBGRAPH",
+        default_value = "FQ6JYszEKApsBpAmiHesRsd9Ygc6mzmpNRANeVQFYoVX"
+    )]
     subgraph: String,
-    #[arg(long, env = "GIB_ALLOCATION", default_value = "0xc87271758174c82e232f966bfe56c2e4615ebea7")]
+    #[arg(
+        long,
+        env = "GIB_ALLOCATION",
+        default_value = "0xc87271758174c82e232f966bfe56c2e4615ebea7"
+    )]
     allocation: String,
-    #[arg(long, env = "GIB_INDEXER", default_value = "0xf92f430dd8567b0d466358c79594ab58d919a6d4")]
+    #[arg(
+        long,
+        env = "GIB_INDEXER",
+        default_value = "0xf92f430dd8567b0d466358c79594ab58d919a6d4"
+    )]
     indexer: String,
 }
 
@@ -54,10 +82,20 @@ struct Row {
 }
 impl Row {
     fn ok(id: char, name: &'static str, detail: impl Into<String>) -> Self {
-        Row { id, name, pass: true, detail: detail.into() }
+        Row {
+            id,
+            name,
+            pass: true,
+            detail: detail.into(),
+        }
     }
     fn fail(id: char, name: &'static str, detail: impl Into<String>) -> Self {
-        Row { id, name, pass: false, detail: detail.into() }
+        Row {
+            id,
+            name,
+            pass: false,
+            detail: detail.into(),
+        }
     }
 }
 
@@ -106,7 +144,11 @@ async fn run() -> Result<bool> {
                 detail: format!("indexers={indexers} subgraphs={subgraphs}"),
             });
         }
-        Err(e) => rows.push(Row::fail('a', "topology sync (counts within sane bounds)", first_line(&e.to_string()))),
+        Err(e) => rows.push(Row::fail(
+            'a',
+            "topology sync (counts within sane bounds)",
+            first_line(&e.to_string()),
+        )),
     }
 
     // (b,c) dispatch a query, then read the gateway_queries record it produced -
@@ -118,7 +160,11 @@ async fn run() -> Result<bool> {
         .unwrap_or(-1);
     let dispatched = dispatch_query(&args.gateway_url, &loaded.api_key, &args.subgraph).await;
     if let Err(e) = &dispatched {
-        rows.push(Row::fail('b', "query dispatched (candidates + receipts)", first_line(&e.to_string())));
+        rows.push(Row::fail(
+            'b',
+            "query dispatched (candidates + receipts)",
+            first_line(&e.to_string()),
+        ));
     }
     // Poll for the new record.
     let mut record = None;
@@ -147,12 +193,24 @@ async fn run() -> Result<bool> {
                     pass: rs == signer_addr,
                     detail: format!("gateway_queries.receipt_signer={rs}"),
                 }),
-                None => rows.push(Row::fail('c', "runtime signer == configured signer", "no signer in record")),
+                None => rows.push(Row::fail(
+                    'c',
+                    "runtime signer == configured signer",
+                    "no signer in record",
+                )),
             }
         }
         None => {
-            rows.push(Row::fail('b', "query dispatched (candidates + receipts)", "no new gateway_queries record observed"));
-            rows.push(Row::fail('c', "runtime signer == configured signer", "no record to check"));
+            rows.push(Row::fail(
+                'b',
+                "query dispatched (candidates + receipts)",
+                "no new gateway_queries record observed",
+            ));
+            rows.push(Row::fail(
+                'c',
+                "runtime signer == configured signer",
+                "no record to check",
+            ));
         }
     }
 
@@ -163,21 +221,61 @@ async fn run() -> Result<bool> {
     for v in values {
         receipts.push(mint_receipt(&cfg, &signer, v)?);
     }
-    let agg_domain_info = fetch_domain_info(&cfg.aggregator_url).await.unwrap_or(serde_json::Value::Null);
+    let agg_domain_info = fetch_domain_info(&cfg.aggregator_url)
+        .await
+        .unwrap_or(serde_json::Value::Null);
     let domain_ok = domain_matches(&agg_domain_info, &cfg);
     match aggregate(&cfg.aggregator_url, &receipts).await {
         Ok(rav) => {
             let c = verify_rav(&cfg, &rav, signer_addr, expected_sum, domain_ok)?;
-            rows.push(Row { id: 'd', name: "RAV signature recovers to signer", pass: c.signer_ok, detail: format!("recovered {}", c.recovered_signer) });
-            rows.push(Row { id: 'd', name: "RAV EIP-712 domain matches", pass: c.domain_ok, detail: format!("chain={} verifier={}", cfg.chain_id, cfg.verifier) });
-            rows.push(Row { id: 'd', name: "RAV aggregate == sum of receipts", pass: c.value_ok, detail: format!("valueAggregate={} expected={}", c.value_aggregate, c.expected_sum) });
-            rows.push(Row { id: 'e', name: "RAV.payer == configured sender", pass: c.payer_ok, detail: format!("payer={} sender={}", rav.message.payer, cfg.payer) });
-            rows.push(Row { id: 'e', name: "RAV.dataService == SubgraphService", pass: c.data_service_ok, detail: format!("dataService={} expected={}", rav.message.dataService, cfg.data_service) });
-            println!("\n--- RAV (evidence) ---\n{}", serde_json::to_string_pretty(&rav)?);
+            rows.push(Row {
+                id: 'd',
+                name: "RAV signature recovers to signer",
+                pass: c.signer_ok,
+                detail: format!("recovered {}", c.recovered_signer),
+            });
+            rows.push(Row {
+                id: 'd',
+                name: "RAV EIP-712 domain matches",
+                pass: c.domain_ok,
+                detail: format!("chain={} verifier={}", cfg.chain_id, cfg.verifier),
+            });
+            rows.push(Row {
+                id: 'd',
+                name: "RAV aggregate == sum of receipts",
+                pass: c.value_ok,
+                detail: format!(
+                    "valueAggregate={} expected={}",
+                    c.value_aggregate, c.expected_sum
+                ),
+            });
+            rows.push(Row {
+                id: 'e',
+                name: "RAV.payer == configured sender",
+                pass: c.payer_ok,
+                detail: format!("payer={} sender={}", rav.message.payer, cfg.payer),
+            });
+            rows.push(Row {
+                id: 'e',
+                name: "RAV.dataService == SubgraphService",
+                pass: c.data_service_ok,
+                detail: format!(
+                    "dataService={} expected={}",
+                    rav.message.dataService, cfg.data_service
+                ),
+            });
+            println!(
+                "\n--- RAV (evidence) ---\n{}",
+                serde_json::to_string_pretty(&rav)?
+            );
         }
         Err(e) => {
             for id in ['d', 'e'] {
-                rows.push(Row::fail(id, "mint -> aggregate -> verify RAV", first_line(&e.to_string())));
+                rows.push(Row::fail(
+                    id,
+                    "mint -> aggregate -> verify RAV",
+                    first_line(&e.to_string()),
+                ));
             }
         }
     }
@@ -191,18 +289,26 @@ async fn run() -> Result<bool> {
             id: 'f',
             name: "NEG: tampered value rejected",
             pass: rejected.is_err(),
-            detail: match &rejected { Err(e) => format!("rejected: {}", first_line(&e.to_string())), Ok(_) => "ACCEPTED (bad!)".into() },
+            detail: match &rejected {
+                Err(e) => format!("rejected: {}", first_line(&e.to_string())),
+                Ok(_) => "ACCEPTED (bad!)".into(),
+            },
         });
     }
     {
-        let wrong = PrivateKeySigner::from_str("0x1111111111111111111111111111111111111111111111111111111111111111")?;
+        let wrong = PrivateKeySigner::from_str(
+            "0x1111111111111111111111111111111111111111111111111111111111111111",
+        )?;
         let bad = mint_receipt(&cfg, &wrong, 100)?;
         let rejected = aggregate(&cfg.aggregator_url, std::slice::from_ref(&bad)).await;
         rows.push(Row {
             id: 'f',
             name: "NEG: wrong-key receipt rejected",
             pass: rejected.is_err(),
-            detail: match &rejected { Err(e) => format!("rejected: {}", first_line(&e.to_string())), Ok(_) => "ACCEPTED (bad!)".into() },
+            detail: match &rejected {
+                Err(e) => format!("rejected: {}", first_line(&e.to_string())),
+                Ok(_) => "ACCEPTED (bad!)".into(),
+            },
         });
     }
 
@@ -210,7 +316,13 @@ async fn run() -> Result<bool> {
     println!("\n=== gib smoke ===");
     let mut all = true;
     for r in &rows {
-        println!("({}) [{}] {:<44} {}", r.id, if r.pass { "PASS" } else { "FAIL" }, r.name, r.detail);
+        println!(
+            "({}) [{}] {:<44} {}",
+            r.id,
+            if r.pass { "PASS" } else { "FAIL" },
+            r.name,
+            r.detail
+        );
         all &= r.pass;
     }
     println!("\nboundary: proves discovery, running-gateway signing, and receipt->RAV aggregation");

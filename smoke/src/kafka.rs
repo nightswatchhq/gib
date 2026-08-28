@@ -104,7 +104,10 @@ mod tests {
     fn roundtrip_with_indexer_queries() {
         let cq = ClientQuery {
             receipt_signer: vec![0x29; 20],
-            indexer_queries: vec![IndexerQuery { indexer: vec![0x01; 20], fee_grt: 1.5e-6 }],
+            indexer_queries: vec![IndexerQuery {
+                indexer: vec![0x01; 20],
+                fee_grt: 1.5e-6,
+            }],
         };
         let back = ClientQuery::decode(cq.encode_to_vec().as_slice()).unwrap();
         assert_eq!(back.indexer_queries.len(), 1);

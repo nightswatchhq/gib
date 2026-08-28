@@ -215,7 +215,12 @@ pub async fn fetch_topology_counts(url: &str, auth: &str) -> Result<(u64, u64)> 
     if !auth.is_empty() {
         req = req.bearer_auth(auth);
     }
-    let outer: serde_json::Value = req.send().await?.json().await.context("topology response")?;
+    let outer: serde_json::Value = req
+        .send()
+        .await?
+        .json()
+        .await
+        .context("topology response")?;
     // Unwrap the indexer-service envelope if present; else accept raw {data}.
     let inner_str = outer.get("graphQLResponse").and_then(|v| v.as_str());
     let inner: serde_json::Value = match inner_str {
@@ -223,8 +228,12 @@ pub async fn fetch_topology_counts(url: &str, auth: &str) -> Result<(u64, u64)> 
         None => outer,
     };
     let gn = &inner["data"]["graphNetwork"];
-    let indexers = gn["indexerCount"].as_u64().or_else(|| gn["indexerCount"].as_str().and_then(|s| s.parse().ok()));
-    let subgraphs = gn["subgraphCount"].as_u64().or_else(|| gn["subgraphCount"].as_str().and_then(|s| s.parse().ok()));
+    let indexers = gn["indexerCount"]
+        .as_u64()
+        .or_else(|| gn["indexerCount"].as_str().and_then(|s| s.parse().ok()));
+    let subgraphs = gn["subgraphCount"]
+        .as_u64()
+        .or_else(|| gn["subgraphCount"].as_str().and_then(|s| s.parse().ok()));
     match (indexers, subgraphs) {
         (Some(i), Some(s)) => Ok((i, s)),
         _ => bail!("could not read graphNetwork counts from topology source: {inner}"),
@@ -291,7 +300,8 @@ mod tests {
             verifier: Address::from_str("0x8f69F5C07477Ac46FBc491B1E6D91E2bb0111A9e").unwrap(),
             payer: Address::from_str("0x4a3156cEFBa872eb9711C5f37e52B5118323865C").unwrap(),
             data_service: Address::from_str("0xb2Bb92d0DE618878E438b55D5846cfecD9301105").unwrap(),
-            service_provider: Address::from_str("0xf92f430dd8567b0d466358c79594ab58d919a6d4").unwrap(),
+            service_provider: Address::from_str("0xf92f430dd8567b0d466358c79594ab58d919a6d4")
+                .unwrap(),
             allocation: Address::from_str("0xc87271758174c82e232f966bfe56c2e4615ebea7").unwrap(),
             aggregator_url: "http://localhost:7610".into(),
         }
@@ -308,7 +318,9 @@ mod tests {
         let cfg = test_cfg();
         let r = mint_receipt(&cfg, &signer, 123).unwrap();
         assert_eq!(r.message.value, 123);
-        let rec = r.recover_signer(&domain(cfg.chain_id, cfg.verifier)).unwrap();
+        let rec = r
+            .recover_signer(&domain(cfg.chain_id, cfg.verifier))
+            .unwrap();
         assert_eq!(rec, signer.address());
     }
 
@@ -322,7 +334,9 @@ mod tests {
         let cfg = test_cfg();
         let mut r = mint_receipt(&cfg, &signer, 100).unwrap();
         r.message.value = 999_999;
-        let rec = r.recover_signer(&domain(cfg.chain_id, cfg.verifier)).unwrap();
+        let rec = r
+            .recover_signer(&domain(cfg.chain_id, cfg.verifier))
+            .unwrap();
         assert_ne!(rec, signer.address());
     }
 
@@ -344,13 +358,31 @@ mod tests {
         let gv = good.as_str();
         let wrong_v = "0x000000000000000000000000000000000000dEaD";
         // Same domain, different chainId encodings -> all match:
-        assert!(domain_matches(&serde_json::json!({"chainId": 42161, "verifyingContract": gv}), &cfg));
-        assert!(domain_matches(&serde_json::json!({"chainId": "0xa4b1", "verifyingContract": gv}), &cfg));
-        assert!(domain_matches(&serde_json::json!({"chainId": "42161", "verifyingContract": gv}), &cfg));
+        assert!(domain_matches(
+            &serde_json::json!({"chainId": 42161, "verifyingContract": gv}),
+            &cfg
+        ));
+        assert!(domain_matches(
+            &serde_json::json!({"chainId": "0xa4b1", "verifyingContract": gv}),
+            &cfg
+        ));
+        assert!(domain_matches(
+            &serde_json::json!({"chainId": "42161", "verifyingContract": gv}),
+            &cfg
+        ));
         // Wrong chain (right verifier) -> must fail:
-        assert!(!domain_matches(&serde_json::json!({"chainId": 1, "verifyingContract": gv}), &cfg));
-        assert!(!domain_matches(&serde_json::json!({"chainId": "0x1", "verifyingContract": gv}), &cfg));
+        assert!(!domain_matches(
+            &serde_json::json!({"chainId": 1, "verifyingContract": gv}),
+            &cfg
+        ));
+        assert!(!domain_matches(
+            &serde_json::json!({"chainId": "0x1", "verifyingContract": gv}),
+            &cfg
+        ));
         // Wrong verifier (right chain) -> must fail:
-        assert!(!domain_matches(&serde_json::json!({"chainId": 42161, "verifyingContract": wrong_v}), &cfg));
+        assert!(!domain_matches(
+            &serde_json::json!({"chainId": 42161, "verifyingContract": wrong_v}),
+            &cfg
+        ));
     }
 }

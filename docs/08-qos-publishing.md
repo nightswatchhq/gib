@@ -4,10 +4,20 @@
 it: how a gateway that is not Edge & Node publishes its own quality data under its
 own `gateway_id`.
 
-## Status: specification, not a runbook
+## Status: the aggregation half is built; nothing has been published
 
-**gib does not ship a QoS publisher, and nothing in this document has been run
-end to end.** No component here exists as open source anywhere that we could
+**Updated 2026-08-28.** gib now ships `qos-publisher/`, a Rust crate implementing the
+aggregation described below: gateway Kafka stream in, the oracle's two 5-minute
+JSON arrays out, with the bucketing, the statistics, the CIDv0 encoding and the
+error attribution under test. Run it with `--dry-run` and read the payloads.
+
+**What still has not happened: nothing has ever been pinned or posted.** The IPFS
+pin and the DataEdge transaction are deliberately not implemented. Both need
+funded keys, and an unpinned payload is a *permanent hole in every consumer's
+history* rather than a retryable failure, so neither is worth half-doing. The
+binary refuses to run without `--dry-run` rather than pretending otherwise.
+
+No component of the publishing side exists as open source anywhere that we could
 find — not in `edgeandnode`, not in `graphprotocol`. E&N's aggregator is internal.
 
 What follows is the wire format, read off two sources that cannot lie about it:
@@ -142,6 +152,12 @@ Each of these is a real inconsistency in live data, not pedantry.
 - **`gateway_id` is a free-form string.** E&N put their gateway's address in it.
   Lodestar uses the literal `lodestar`. Nothing enforces either. Pick one, make it
   stable forever, and be aware consumers may treat it as an address.
+- **Do NOT take `gateway_id` from the protobuf.** *(Correction, 2026-08-28.)* The
+  Kafka message has a field of that name and it is not a gateway identity: the
+  gateway fills it from `graph_env_id`, which gib templates as `gib-${CHAIN_ID}`
+  (see `config/gateway.json.tmpl`). Map it straight through and every gib operator
+  alive publishes under `gib-42161`, into one indistinguishable bucket. The
+  publisher takes `--gateway-id` separately and ignores the protobuf field.
 - **Fees are GRT as JSON floats**, not wei, not USD.
 - **The two topics use different latency prefixes**: `*_indexer_latency_ms` on
   allocation records, `*_gateway_latency_ms` on query records. Query records also
@@ -234,7 +250,8 @@ from theirs on the same traffic, this is the first place to look.
 
 ## What you would have to build
 
-A single service, and gib already hands it the hard part:
+Steps 1 to 3 are now built in `qos-publisher/`; 4 to 6 are not. A single service,
+and gib already hands it the hard part:
 
 1. **Consume** `gateway_queries` from the Redpanda gib already runs.
 2. **Bucket** into 5-minute windows aligned to multiples of 300 unix seconds.

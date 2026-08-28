@@ -1,0 +1,25 @@
+[package]
+name = "gib-qos-publisher"
+version = "0.1.0"
+edition = "2021"
+description = "Publishes a gateway's own QoS feed: consumes the gateway's Kafka query stream, aggregates it into the Gateway QoS Oracle's 5-minute wire format, and (later) pins and posts it. See docs/08-qos-publishing.md."
+
+[[bin]]
+name = "gib-qos-publisher"
+path = "src/main.rs"
+
+[lib]
+name = "gib_qos_publisher"
+path = "src/lib.rs"
+
+[dependencies]
+prost = "0.13"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+bs58 = "0.5"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rdkafka = { version = "0.37", features = ["cmake-build"] }

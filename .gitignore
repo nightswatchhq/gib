@@ -7,3 +7,6 @@ config/addresses.env
 # OS / editor
 .DS_Store
 *.swp
+
+# Rust build artefacts
+target/

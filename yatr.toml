@@ -52,7 +52,19 @@ desc = "Tear the stack down"
 run = ["docker compose down"]
 no_cache = true
 
+[tasks.qos-build]
+desc = "Build the QoS publisher"
+run = ["cargo build --release"]
+cwd = "qos-publisher"
+sources = ["src/**/*.rs", "tests/**/*.rs", "Cargo.toml", "Cargo.lock"]
+
+[tasks.qos-test]
+desc = "Test the QoS aggregation against the oracle wire format"
+run = ["cargo fmt --check", "cargo clippy --all-targets -- -D warnings", "cargo test"]
+cwd = "qos-publisher"
+sources = ["src/**/*.rs", "tests/**/*.rs", "Cargo.toml", "Cargo.lock"]
+
 [tasks.ci]
-desc = "What can be checked without a running stack: config, shellcheck, adapter, smoke-build"
-depends = ["config", "shellcheck", "adapter", "smoke-build"]
+desc = "What can be checked without a running stack: config, shellcheck, adapter, smoke-build, qos-test"
+depends = ["config", "shellcheck", "adapter", "smoke-build", "qos-test"]
 run = []

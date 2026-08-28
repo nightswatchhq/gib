@@ -4,6 +4,29 @@ For an indexer to serve your gateway and get paid, it must trust your **tap-aggr
 endpoint for your **sender** address. This is the handshake — historically the slowest part
 of standing up an independent gateway, so make it easy for them.
 
+## Run `gib onboard` first
+
+*(Added 2026-08-28.)* Every failure in this handshake is asymmetric: your aggregator works
+perfectly from your own shell, and the indexer discovers hours later that it does not work
+from the internet, as receipts that bounce with no diagnosis. That is the wrong way round,
+and it is why this step has a reputation.
+
+`gib onboard` checks your side and prints the block below **only if it would actually work**:
+
+```sh
+docker compose --profile onboard run --rm onboard \
+  --aggregator-url https://aggregator.your-domain.example
+```
+
+It refuses when the aggregator URL is loopback, private-range or a Compose service name
+(all of which resolve for you and for nobody else), when the aggregator is unreachable or
+advertises a different EIP-712 domain than the gateway that signs — a reverse proxy on the
+wrong port passes every other check and fails every receipt — or when the collector and
+subgraph-service addresses have drifted from `config/addresses.env`.
+
+Plain `http` is a warning, not a refusal. You are asking an indexer to trust that endpoint
+with their receipt aggregation; some will decline, and all of them should.
+
 ## What you give the indexer
 
 Two values:

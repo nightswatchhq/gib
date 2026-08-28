@@ -2,11 +2,18 @@
 name = "gib-smoke"
 version = "0.1.0"
 edition = "2021"
+# Two binaries now, and the Dockerfile plus `yatr smoke` both say bare `cargo run`.
+# Without this, adding gib-onboard silently breaks the smoke test.
+default-run = "gib-smoke"
 description = "gib self-test: the check every operator runs before asking an indexer to whitelist them. Composes the running-gateway signing path (Phase 1) with the receipt->RAV aggregation path (Phase 2). Nothing on-chain."
 
 [[bin]]
 name = "gib-smoke"
 path = "src/main.rs"
+
+[[bin]]
+name = "gib-onboard"
+path = "src/onboard_main.rs"
 
 [lib]
 name = "gib_smoke"

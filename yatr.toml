@@ -25,10 +25,22 @@ run = ["shellcheck scripts/fetch-addresses.sh scripts/gen-keys.sh scripts/render
 sources = ["scripts/*.sh"]
 
 [tasks.smoke-build]
-desc = "Build the smoke-test binary"
+desc = "Build the smoke-test and onboarding binaries"
 run = ["cargo build --release"]
 cwd = "smoke"
 sources = ["src/**/*.rs", "Cargo.toml", "Cargo.lock"]
+
+[tasks.smoke-test]
+desc = "Unit-test the smoke + onboarding logic (no running stack needed)"
+run = ["cargo fmt --check", "cargo test"]
+cwd = "smoke"
+sources = ["src/**/*.rs", "Cargo.toml", "Cargo.lock"]
+
+[tasks.onboard]
+desc = "Print the block an indexer pastes, if your side is ready for it"
+run = ["cargo run --release --bin gib-onboard"]
+cwd = "smoke"
+no_cache = true
 
 [tasks.smoke]
 desc = "Run the smoke test against a running stack"
@@ -65,6 +77,6 @@ cwd = "qos-publisher"
 sources = ["src/**/*.rs", "tests/**/*.rs", "Cargo.toml", "Cargo.lock"]
 
 [tasks.ci]
-desc = "What can be checked without a running stack: config, shellcheck, adapter, smoke-build, qos-test"
-depends = ["config", "shellcheck", "adapter", "smoke-build", "qos-test"]
+desc = "What can be checked without a running stack: config, shellcheck, adapter, smoke-build, smoke-test, qos-test"
+depends = ["config", "shellcheck", "adapter", "smoke-build", "smoke-test", "qos-test"]
 run = []

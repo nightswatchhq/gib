@@ -24,6 +24,7 @@ use std::str::FromStr;
 
 pub mod config;
 pub mod kafka;
+pub mod onboard;
 use thegraph_core::alloy::{
     dyn_abi::Eip712Domain,
     primitives::{Address, FixedBytes, U256},

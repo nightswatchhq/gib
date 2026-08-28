@@ -128,6 +128,21 @@ services:
       - ./runtime/gateway.json:/config/gateway.json:ro
     restart: "no"
 
+  # Pre-flight for the indexer handshake. Same image as smoke, different entrypoint.
+  # Deliberately does NOT depend on the stack: the whole point is to test the aggregator
+  # URL an indexer would use, from outside, so it must run against public DNS rather than
+  # the Compose network. Pass --aggregator-url; it refuses in-network names on purpose.
+  onboard:
+    container_name: gib-onboard
+    build: ./smoke
+    image: gib-smoke:latest
+    profiles: ["onboard"]
+    entrypoint: ["gib-onboard"]
+    volumes:
+      - ./runtime/gateway.json:/config/gateway.json:ro
+      - ./config/addresses.env:/config/addresses.env:ro
+    restart: "no"
+
   # --- Optional monitoring profile ---------------------------------------
   prometheus:
     container_name: gib-prometheus
